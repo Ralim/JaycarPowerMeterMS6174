@@ -34,6 +34,7 @@ namespace Jaycar_Data_Logger_Interface
                         //open the port
                         logger = new DataLogger(cbPorts.Text);
                         logger.DownloadDone += logger_DownloadDone;
+                        gbData.Enabled = true;
                     }
                     catch { }
                     finally
@@ -91,7 +92,8 @@ namespace Jaycar_Data_Logger_Interface
                     cbDataSet.Items.Add("Item " + (i + 1).ToString());
                 if (logger.dataLoggReadings.Count > 0)
                     cbDataSet.SelectedIndex = 0;
-
+                gbDataSet.Enabled = true;
+                dataGridView.Enabled = true;
                 //auto select the first one
             }
         }
@@ -102,6 +104,13 @@ namespace Jaycar_Data_Logger_Interface
             {//we have a valid entry id
                 reDrawDataGrid(cbDataSet.SelectedIndex);//fill the grid
                 //now we need to fill out the text box
+                txtDataInfo.Text = "";
+                txtDataInfo.Text += string.Format("V Peak : {0:0000.00} V\r\n", logger.dataLoggReadings[cbDataSet.SelectedIndex].VoltMax);
+                txtDataInfo.Text += string.Format("V Min  : {0:0000.00} V\r\n", logger.dataLoggReadings[cbDataSet.SelectedIndex].VoltMin);
+                txtDataInfo.Text += string.Format("A Peak : {0:0000.00} A\r\n", logger.dataLoggReadings[cbDataSet.SelectedIndex].AmpMax);
+                txtDataInfo.Text += string.Format("A Min  : {0:0000.00} A\r\n", logger.dataLoggReadings[cbDataSet.SelectedIndex].AmpMin);
+                txtDataInfo.Text += string.Format("W Peak : {0:0000.00} W\r\n", logger.dataLoggReadings[cbDataSet.SelectedIndex].WattPeak);
+                txtDataInfo.Text += string.Format("Sample : {0} S", logger.dataLoggReadings[cbDataSet.SelectedIndex].TimeBase);
 
             }
         }
@@ -114,6 +123,36 @@ namespace Jaycar_Data_Logger_Interface
                 dataGridView.Rows.Add(count.ToString(), r.Voltage.ToString("000.00") + " V", r.Current.ToString("000.00") + " A" , (r.Current * r.Voltage).ToString("0000.00") + "W");
                 count++;
             }
+        }
+
+        private void btnExportData_Click(object sender, EventArgs e)
+        {
+            if (cbDataSet.SelectedIndex >= 0)
+            {
+                //we have our data to export
+                SaveFileDialog dlg = new SaveFileDialog();
+                dlg.AddExtension = false;
+                dlg.DefaultExt = "";
+                dlg.Title = "Save Data As";
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    //they have chosen a location
+                    string baseFile = dlg.FileName;
+                    using (var sw = new System.IO.StreamWriter(baseFile + ".csv"))
+                    {
+                        sw.Write(logger.dataLoggReadings[cbDataSet.SelectedIndex].toCSVReadings());
+                    }
+                    using (var sw = new System.IO.StreamWriter(baseFile + ".meta.csv"))
+                    {
+                        sw.Write(logger.dataLoggReadings[cbDataSet.SelectedIndex].toCSVMeta());
+                    }
+                }
+            }
+        }
+
+        private void linkLabel1_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            System.Diagnostics.Process.Start("https://github.com/Ralim/JaycarPowerMeterMS6174");
         }
     }
 }

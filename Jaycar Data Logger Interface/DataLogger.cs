@@ -16,7 +16,7 @@ namespace Jaycar_Data_Logger_Interface
         public List<dataLogg> dataLoggReadings = new List<dataLogg> { };
         public event DownloadDoneHandler DownloadDone;
         public delegate void DownloadDoneHandler();
-
+        bool updaterLock = false;
         public bool isOpen()
         {
             return _port.IsOpen;
@@ -57,6 +57,10 @@ namespace Jaycar_Data_Logger_Interface
                 {
                     requestCurrentStatus();
                 }
+                while (updaterLock)
+                {
+                    System.Threading.Thread.Sleep(500);
+                }
                 System.Threading.Thread.Sleep(300);
             }
         }
@@ -75,6 +79,7 @@ namespace Jaycar_Data_Logger_Interface
         {
             lock (_port)
             {
+                updaterLock = true;
                 dataLoggReadings.Clear();
                 byte[] buffer = new byte[] { 0x47, 0x44, 0x41, 0x54, 0x30, 0x30, 0x30, 0x30, 0x0D };
                 _port.Write(buffer, 0, buffer.Length);//send the request
@@ -132,6 +137,7 @@ namespace Jaycar_Data_Logger_Interface
                             //we hit here when we have finished a download
                             if (DownloadDone != null)
                                 DownloadDone();
+                            updaterLock = false;
                             //fired off event if it is subscribed to
                         }
                 }
@@ -187,9 +193,31 @@ namespace Jaycar_Data_Logger_Interface
         public List<reading> readings;
         public float VoltMax, AmpMax, VoltMin, AmpMin, WattPeak;
         public int TimeBase;
+        public string toCSVReadings()
+        {
+            string s = "Sample No,Voltage,Current,Power\r\n";
+            int count =0;
+            foreach (var r in readings)
+            {
+                s += String.Format("{0},{1},{2},{3}\r\n", count, r.Voltage, r.Current, r.Power());
+                count++;
+            }
+            return s;
+        }
+        public string toCSVMeta()
+        {
+            string s = "Volt Max,Volt Min,Amp Max,Amp Min, Power Max,Sample time\r\n";
+            s += string.Format("{0},{1},{2},{3},{4},{5}\r\n", VoltMax, VoltMin, AmpMax, AmpMin, WattPeak, TimeBase);
+
+            return s;
+        }
     }
     class reading
     {
         public float Voltage, Current;
+        public float Power()
+        {
+            return Voltage * Current;
+        }
     }
 }
