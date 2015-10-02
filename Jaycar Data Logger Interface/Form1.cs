@@ -66,7 +66,12 @@ namespace Jaycar_Data_Logger_Interface
             cbPorts.Items.Clear();
             foreach (var p in SerialPort.GetPortNames())
                 cbPorts.Items.Add(p);
+            this.FormClosing += Form1_FormClosing;
+        }
 
+        void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            logger.close();
         }
 
         private void btnDownload_Click(object sender, EventArgs e)
