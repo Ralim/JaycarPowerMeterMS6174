@@ -13,7 +13,7 @@ namespace Jaycar_Data_Logger_Interface
         SerialPort _port = new SerialPort();
         public currentStatus Current = new currentStatus();
         Thread dataUpdater;
-        List<dataLogg> dataLoggReadings = new List<dataLogg> { };
+        public List<dataLogg> dataLoggReadings = new List<dataLogg> { };
         public event DownloadDoneHandler DownloadDone;
         public delegate void DownloadDoneHandler();
 
@@ -68,22 +68,40 @@ namespace Jaycar_Data_Logger_Interface
             byte[] buffer = new byte[] { 0x47, 0x56, 0x43, 0x57, 0x0D };
             _port.Write(buffer, 0, buffer.Length);//send the request
         }
+        /// <summary>
+        /// Sends the command to request the device to downloads its data
+        /// </summary>
         public void requestDump()
         {
-            dataLoggReadings.Clear();
-            byte[] buffer = new byte[] { 0x47, 0x44, 0x41, 0x54, 0x30, 0x30, 0x30, 0x30, 0x0D };
-            _port.Write(buffer, 0, buffer.Length);//send the request
-        }
-        void _port_DataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            //here we need to handle the incoming data
-            while (_port.BytesToRead > 2)
+            lock (_port)
             {
-                string m = _port.ReadTo("" + (char)0x0D);
-                processMessage(m);//send it off to be stored
+                dataLoggReadings.Clear();
+                byte[] buffer = new byte[] { 0x47, 0x44, 0x41, 0x54, 0x30, 0x30, 0x30, 0x30, 0x0D };
+                _port.Write(buffer, 0, buffer.Length);//send the request
             }
         }
 
+        /// <summary>
+        /// Handles data arriving on the serial port
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void _port_DataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            lock (_port)
+            {
+                //here we need to handle the incoming data
+                while (_port.BytesToRead > 2)
+                {
+                    string m = _port.ReadTo("" + (char)0x0D);
+                    processMessage(m);//send it off to be stored
+                }
+            }
+        }
+        /// <summary>
+        /// Processes incoming Serial Data
+        /// </summary>
+        /// <param name="message">Serial Data to proces</param>
         void processMessage(string message)
         {
             if (message.StartsWith("  "))//status starts with 0x20 0x20
