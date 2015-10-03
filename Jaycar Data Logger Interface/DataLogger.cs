@@ -10,6 +10,11 @@ namespace Jaycar_Data_Logger_Interface
 {
     class DataLogger
     {
+        /*
+         * Jaycar Datalogger 
+         * All communications detailed found by capturing the serial port data from the original program
+         * <ralim@ralimtek.com>
+         */
         SerialPort _port = new SerialPort();
         public currentStatus Current = new currentStatus();
         Thread dataUpdater;
@@ -53,12 +58,10 @@ namespace Jaycar_Data_Logger_Interface
         {
             while (_port.IsOpen)
             {
-                lock (_port)
-                {
-                    requestCurrentStatus();
-                }
+                requestCurrentStatus();
                 while (updaterLock)
                 {
+                    //Dont ask for updates while we are waiting for data downloads
                     System.Threading.Thread.Sleep(500);
                 }
                 System.Threading.Thread.Sleep(300);
@@ -69,8 +72,11 @@ namespace Jaycar_Data_Logger_Interface
         /// </summary>
         void requestCurrentStatus()
         {
-            byte[] buffer = new byte[] { 0x47, 0x56, 0x43, 0x57, 0x0D };
-            _port.Write(buffer, 0, buffer.Length);//send the request
+            lock (_port)
+            {
+                byte[] buffer = new byte[] { 0x47, 0x56, 0x43, 0x57, 0x0D };
+                _port.Write(buffer, 0, buffer.Length);//send the request
+            }
         }
         /// <summary>
         /// Sends the command to request the device to downloads its data
@@ -196,7 +202,7 @@ namespace Jaycar_Data_Logger_Interface
         public string toCSVReadings()
         {
             string s = "Sample No,Voltage,Current,Power\r\n";
-            int count =0;
+            int count = 0;
             foreach (var r in readings)
             {
                 s += String.Format("{0},{1},{2},{3}\r\n", count, r.Voltage, r.Current, r.Power());
